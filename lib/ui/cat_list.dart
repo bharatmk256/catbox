@@ -14,18 +14,33 @@ class CatList extends StatefulWidget {
 class _CatListState extends State<CatList> {
   List<Cat> _cats = [];
 
+  CatApi _api;
+  NetworkImage _profileImage;
+
   @override
   void initState() {
     super.initState();
-    _loadCats();
+    _loadFromFirebase();
+    _reloadCats();
   }
 
-  _loadCats() async {
-    String fileData =
-        await DefaultAssetBundle.of(context).loadString('assets/cats.json');
+  _loadFromFirebase() async {
+    final api = await CatApi.signInWithGoogle();
+    final cats = await api.getAllCats();
     setState(() {
-      _cats = CatApi.allCatsFromJson(fileData);
+      _api = api;
+      _cats = cats;
+      _profileImage = new NetworkImage(api.firebaseUser.photoUrl);
     });
+  }
+
+  _reloadCats() async {
+    if (_api != null) {
+      final cats = await _api.getAllCats();
+      setState(() {
+        _cats = cats;
+      });
+    }
   }
 
   _navigateToCatDetails(Cat cat, Object avatarTag) {
@@ -98,7 +113,7 @@ class _CatListState extends State<CatList> {
   }
 
   Future<Null> refresh() {
-    _loadCats();
+    _reloadCats();
     return new Future<Null>.value();
   }
 
@@ -120,6 +135,19 @@ class _CatListState extends State<CatList> {
     return new Scaffold(
       backgroundColor: Colors.blue,
       body: _buildBody(),
+      floatingActionButton: new FloatingActionButton(
+        onPressed: () {
+          // TODO add something in fab
+        },
+        tooltip: _api != null
+            ? 'Signed-in: ' + _api.firebaseUser.displayName
+            : 'Not Signed-in',
+        backgroundColor: Colors.blue,
+        child: new CircleAvatar(
+          backgroundImage: _profileImage,
+          radius: 50.0,
+        ),
+      ),
     );
   }
 }
